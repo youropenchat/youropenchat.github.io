@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>OpenChat - Kapalı</title>
+<title>OpenChat</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700&display=swap');
 
@@ -133,7 +133,9 @@
 
       countdownEl.textContent = `Açılışa kalan süre: ${days} gün ${hours} saat ${minutes} dakika ${seconds} saniye`;
     }
-
+setTimeout(() => {
+  window.location.href = "https://youropenchat.github.io/";
+}, 3000); // 3 saniye sonra yönlendirir
     updateCountdown();
     setInterval(updateCountdown, 1000);
   });
