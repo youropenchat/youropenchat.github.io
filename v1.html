@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenChat</title>
+
+  <!-- Cloudinary Upload Widget SDK -->
+  <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
+
+  <style>
+    /* --- Genel Ayarlar --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1e2124;
+      color: #e1e3e5;
+    }
+    button, input, select, textarea {
+      outline: none;
+      font-family: inherit;
+    }
+
+    /* --- Ortak Buton Stili (tüm butonlara uygulanacak) --- */
+    .btn {
+      display: inline-block;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      background-color: #4f86f7;
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      text-align: center;
+      text-decoration: none;
+      user-select: none;
+    }
+    .btn:hover {
+      background-color: #3e6edc;
+    }
+    .btn:active {
+      transform: scale(0.97);
+    }
+    .btn.danger {
+      background-color: #e54b4b;
+    }
+    .btn.danger:hover {
+      background-color: #c43f3f;
+    }
+    .btn.small {
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+
+    /* --- Koyu ve Açık Tema Renkleri --- */
+    body.light-mode {
+      background-color: #f4f4f4;
+      color: #222;
+    }
+    body.light-mode #userControls { background-color: #e0e0e0; }
+    body.light-mode #messages { background: #fafafa; }
+    body.light-mode .message { background: #ddd; color: #222; }
+    body.light-mode .message .header .author { color: #0057e7; }
+    body.light-mode #inputArea { background-color: #e0e0e0; }
+    body.light-mode #searchInput { background-color: #fff; color: #222; }
+    body.light-mode .modal { background: #fff; color: #222; }
+    body.light-mode .modal input, body.light-mode .modal select { background: #eee; color: #222; }
+    body.light-mode .modal button { background: #0057e7; }
+    body.light-mode .modal .danger-btn { background-color: #d62828; }
+    body.light-mode #mentionPopup { background-color: #0057e7; color: #fff; }
+    body.light-mode #typingIndicator, body.light-mode #onlineCount { color: #555; }
+
+    /* --- Modal Arka Plan --- */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    .modal {
+      background: #2f3438;
+      border-radius: 8px;
+      padding: 20px 30px;
+      width: 90%;
+      max-width: 360px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .modal h2 {
+      margin-bottom: 15px;
+      font-size: 22px;
+      color: #ffffff;
+    }
+    .modal input, .modal select, .modal textarea {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 14px;
+    }
+    .modal button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 6px;
+      background-color: #4f86f7;
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .modal button:hover {
+      background-color: #3e6edc;
+    }
+    .modal .danger-btn {
+      background-color: #e54b4b;
+    }
+    .modal .danger-btn:hover {
+      background-color: #c43f3f;
+    }
+    .modal .error {
+      margin-top: 8px;
+      color: #f15b5b;
+      font-size: 13px;
+    }
+
+    /* --- Sohbet Ekranı --- */
+    #chat {
+      display: none; /* Giriş sonrası JS ile 'flex' yapılıyor */
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: #1e2124;
+    }
+    #userControls {
+      background: #292d31;
+      padding: 8px 12px;
+      display: none;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid #3a3f45;
+    }
+    #userControls .btn {
+      margin-right: 6px;
+    }
+    #toggleAdminBtn {
+      background-color: #d62828;
+    }
+    #toggleAdminBtn:hover {
+      background-color: #b21818;
+    }
+    #onlineCount {
+      margin-left: auto;
+      font-size: 12px;
+      color: #9aa0a6;
+    }
+    #typingIndicator {
+      font-size: 12px;
+      color: #9aa0a6;
+      padding: 4px 12px;
+      display: none;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      background: #1e2124;
+      position: relative;
+    }
+    .message {
+      background: #2f3438;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      position: relative;
+      word-wrap: break-word;
+    }
+    .message .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .message .header .author {
+      color: #4f86f7;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .role-tag {
+      margin-left: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #faa61a;
+    }
+    .message .header .time {
+      font-size: 10px;
+      color: #9aa0a6;
+    }
+    .message .content {
+      margin-top: 4px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #e1e3e5;
+    }
+    .message img {
+      max-width: 200px;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
+    .message.mention .content {
+      color: #faa61a;
+      font-weight: 600;
+    }
+    .message .actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+    }
+    .message .actions .btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .message .actions .delete-btn {
+      background: #e54b4b;
+    }
+    .message .actions .delete-btn:hover {
+      background: #c43f3f;
+    }
+    .message .actions .edit-btn {
+      background: #4f86f7;
+    }
+    .message .actions .edit-btn:hover {
+      background: #3e6edc;
+    }
+    .message.mention {
+      background: #3b3f44;
+    }
+
+    #inputArea {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      background-color: #2b2f33;
+      border-top: 1px solid #3a3f45;
+      position: relative;
+    }
+    #messageInput {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 4px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 13px;
+    }
+    #sendBtn {
+      margin-left: 8px;
+    }
+
+    /* --- Cloudinary Dosya Seçme ve Yükle --- */
+    #fileInput {
+      margin-left: 8px;
+      font-size: 13px;
+      color: #ddd;
+      background: #3b3f44;
+      border: 1px solid #3a3f45;
+      border-radius: 4px;
+      padding: 4px;
+      cursor: pointer;
+    }
+    #uploadFileBtn {
+      margin-left: 4px;
+      padding: 6px 10px;
+    }
+
+    /* --- Profil Popup --- */
+    #profilePopup {
+      position: fixed;
+      background-color: #292d31;
+      color: #fff;
+      border: 1px solid #3a3f45;
+      border-radius: 8px;
+      padding: 12px;
+      display: none;
+      z-index: 20;
+      min-width: 200px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    #profilePopup .username {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    #profilePopup .register-date {
+      text-align: center;
+      font-size: 11px;
+      color: #9aa0a6;
+      margin-bottom: 6px;
+    }
+    #profilePopup .days-since {
+      text-align: center;
+      font-size: 11px;
+      color: #9aa0a6;
+      margin-bottom: 6px;
+    }
+    #profilePopup .status {
+      text-align: center;
+      font-size: 12px;
+      color: #9aa0a6;
+      margin-bottom: 8px;
+    }
+    #profilePopup .btn {
+      margin-top: 6px;
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+
+    /* --- Şifre Değiştir Popup --- */
+    #changePasswordPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #changePasswordPopup .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #changePasswordPopup input {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 14px;
+    }
+    #changePasswordPopup .btn {
+      width: 100%;
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #changePasswordPopup .danger-btn {
+      background-color: #e54b4b;
+    }
+    #changePasswordPopup .danger-btn:hover {
+      background-color: #c43f3f;
+    }
+    #changePasswordPopup .error {
+      margin-top: 8px;
+      color: #f15b5b;
+      font-size: 13px;
+    }
+
+    /* --- Kullanıcı Adı Değiştir Popup --- */
+    #changeUsernamePopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: false;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #changeUsernamePopup .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #changeUsernamePopup input {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 14px;
+    }
+    #changeUsernamePopup .btn {
+      width: 100%;
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #changeUsernamePopup .danger-btn {
+      background-color: #e54b4b;
+    }
+    #changeUsernamePopup .danger-btn:hover {
+      background-color: #c43f3f;
+    }
+    #changeUsernamePopup .error {
+      margin-top: 8px;
+      color: #f15b5b;
+      font-size: 13px;
+    }
+
+    /* --- Mesajlarım Popup --- */
+    #myMessagesPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #myMessagesPopup .modal {
+      width: 90%;
+      max-width: 400px;
+    }
+    #myMessagesContent {
+      background: #2f3438;
+      border-radius: 8px;
+      max-height: 70vh;
+      overflow-y: auto;
+      margin-top: 12px;
+      padding: 10px;
+    }
+    #myMessagesContent .thread {
+      padding: 10px;
+      border-bottom: 1px solid #3a3f45;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+      font-size: 13px;
+    }
+    #myMessagesContent .thread:hover {
+      background: #3b3f44;
+    }
+    #myMessagesContent .thread:last-child {
+      border-bottom: none;
+    }
+    #myMessagesContent .thread .badge {
+      background: #4f86f7;
+      border-radius: 12px;
+      color: #fff;
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+
+    /* --- Admin Panel Popup --- */
+    #adminModal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #adminModal .modal {
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    #adminModal .btn {
+      width: 100%;
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #adminModal .danger-btn {
+      background-color: #e54b4b;
+    }
+    #adminModal .danger-btn:hover {
+      background-color: #c43f3f;
+    }
+
+    /* --- Ban Listesi Popup --- */
+    #banListPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #banListPopup .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #banListPopup .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      border-bottom: 1px solid #3a3f45;
+      font-size: 13px;
+      background: #2f3438;
+      margin-bottom: 4px;
+      border-radius: 4px;
+    }
+    #banListPopup .user-item .btn {
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    /* --- Sessize Alma Popup --- */
+    #mutePopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #mutePopup .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #mutePopup input {
+      width: 100%;
+      margin: 6px 0;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 4px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 13px;
+    }
+    #mutePopup .btn {
+      width: 100%;
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #mutePopup .danger-btn {
+      background-color: #e54b4b;
+    }
+    #mutePopup .danger-btn:hover {
+      background-color: #c43f3f;
+    }
+    #mutePopup .error {
+      margin-top: 6px;
+      color: #f15b5b;
+      font-size: 13px;
+    }
+
+    /* --- Duyuru Listesi Popup --- */
+    #announcementListPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #announcementListPopup .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #announcementListPopup .announcement-item {
+      background: #2f3438;
+      padding: 6px 8px;
+      border-bottom: 1px solid #3a3f45;
+      margin-bottom: 4px;
+      border-radius: 4px;
+      text-align: left;
+      font-size: 13px;
+      color: #e1e3e5;
+    }
+    #announcementListPopup .announcement-item .btn {
+      margin-top: 4px;
+      font-size: 11px;
+      padding: 4px 6px;
+    }
+
+    /* --- Kullanıcı Bilgi Popup --- */
+    #userInfoPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #userInfoPopup .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #userInfoPopup p {
+      margin: 6px 0;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    /* --- Tüm Kullanıcılar Popup (Admin) --- */
+    #allUsersPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #allUsersPopup .modal {
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    #allUsersPopup .modal div {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    /* --- DM Kutusu --- */
+    #privateChat {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      background: #1e2124;
+      color: #e1e3e5;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      z-index: 30;
+    }
+    #privateChat .startChatBtn {
+      margin: 8px 12px;
+    }
+    #privateChat .header {
+      background: #292d31;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #3a3f45;
+    }
+    #privateChat .header span {
+      font-weight: 600;
+      font-size: 14px;
+      color: #4f86f7;
+    }
+    #privateChat .header .btn {
+      padding: 4px 8px;
+    }
+    #privateChat .messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #1e2124;
+    }
+    #privateChat .messages .msg {
+      background: #2f3438;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      word-wrap: break-word;
+      position: relative;
+    }
+    #privateChat .messages .msg .header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #9aa0a6;
+    }
+    #privateChat .messages .msg .content {
+      margin-top: 4px;
+      font-size: 13px;
+      color: #e1e3e5;
+    }
+    #privateChat .messages .msg .read-status {
+      font-size: 0.8em;
+      color: green;
+      margin-left: 5px;
+    }
+    #privateChat .messages .msg .actions {
+      margin-top: 6px;
+      display: flex;
+      gap: 6px;
+    }
+    #privateChat .messages .msg .actions .btn {
+      font-size: 11px;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+    #privateChat .messages .msg .actions .delete-btn {
+      background: #e54b4b;
+    }
+    #privateChat .messages .msg .actions .delete-btn:hover {
+      background: #c43f3f;
+    }
+    #privateChat .messages .msg .actions .edit-btn {
+      background: #4f86f7;
+    }
+    #privateChat .messages .msg .actions .edit-btn:hover {
+      background: #3e6edc;
+    }
+    #privateChat .inputArea {
+      display: flex;
+      padding: 8px 12px;
+      background: #2b2f33;
+      border-top: 1px solid #3a3f45;
+    }
+    #privateChat .inputArea input {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 4px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 13px;
+    }
+    #privateChat .inputArea .btn {
+      margin-left: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    #privateChat .inputArea .btn:hover {
+      background-color: #3e6edc;
+    }
+
+    /* --- Sohbete Başla Modal --- */
+    #startChatModal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #startChatModal .modal {
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+    }
+    #startChatModal input {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #3b3f44;
+      color: #e1e3e5;
+      font-size: 14px;
+    }
+    #startChatModal .btn {
+      width: 100%;
+      margin: 8px 0;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #startChatModal .danger-btn {
+      background-color: #e54b4b;
+    }
+    #startChatModal .danger-btn:hover {
+      background-color: #c43f3f;
+    }
+    #startChatModal .error {
+      margin-top: 8px;
+      color: #f15b5b;
+      font-size: 13px;
+    }
+
+    /* --- Mobil (max-width: 600px) --- */
+    @media (max-width: 600px) {
+      #userControls {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      #inputArea, #privateChat .inputArea {
+        flex-direction: column;
+      }
+      #sendBtn, #uploadFileBtn, #privateChat .inputArea .btn {
+        margin-left: 0;
+        margin-top: 8px;
+      }
+      #messageInput, #privateChat .inputArea input {
+        font-size: 13px;
+      }
+      .message {
+        font-size: 13px;
+      }
+      #authModal input {
+        font-size: 13px;
+      }
+      #authModal button {
+        font-size: 12px;
+        padding: 6px 8px;
+      }
+      #changePasswordPopup input, #changeUsernamePopup input { font-size: 13px; }
+      #changePasswordPopup button, #changeUsernamePopup button { font-size: 12px; }
+      #myMessagesContent { width: 95%; }
+      #myMessagesContent .thread {
+        font-size: 13px;
+        padding: 8px;
+      }
+      #privateChat .header, #privateChat .inputArea {
+        padding: 8px 10px;
+      }
+      #privateChat .inputArea .btn {
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      #privateChat .inputArea input {
+        font-size: 13px;
+        padding: 6px 8px;
+      }
+    }
+
+    /* --- Mention Popup --- */
+    #mentionPopup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #4f86f7;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: none;
+      z-index: 50;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Mention Popup -->
+<div id="mentionPopup">Birisi seni etiketledi!</div>
+
+<!-- Kayıt/Giriş Modalı -->
+<div id="authModal" class="modal-overlay">
+  <div class="modal">
+    <h2>OpenChat - Kayıt ve Giriş</h2>
+    <input type="text" id="authUsername" placeholder="Kullanıcı adı">
+    <input type="password" id="authPassword" placeholder="Şifre">
+    <label style="font-size:12px; color:#ddd;">
+      <input type="checkbox" id="rememberMeLogin"> Beni hatırla
+    </label>
+    <button class="btn" onclick="register()">Kayıt Ol</button>
+    <button class="btn" onclick="login()">Giriş Yap</button>
+    <div id="authError" class="error"></div>
+  </div>
+</div>
+
+<!-- OpenChat Özellikleri Pop-up (girişten sonra bir kez gösterilecek) -->
+<div id="welcomePopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>OpenChat’e Hoşgeldiniz!</h2>
+    <p>OpenChat, şu özelliklere sahiptir:</p>
+    <ul style="text-align:left; margin:10px 0; font-size:14px;">
+      <li>Global sohbet imkânı</li>
+      <li>Özel mesaj (DM) oluşturma</li>
+      <li>Mentions (@kullanıcı) ile bildirim</li>
+      <li>Rol bazlı ayrıcalıklar (VIP, Moderator, Admin, Tester, BETA-TESTER)</li>
+      <li>Mesaj arama ve düzenleme</li>
+      <li>PDF/TXT indirme (Admin için)</li>
+      <li>Kayıt tarihi ve “Kaç gün kayıtlı” bilgisi</li>
+      <li>Beni Hatırla seçeneği</li>
+      <li>Çevrimiçi kullanıcı gösterimi</li>
+      <li>Basit tema (Koyu/Açık) geçişi</li>
+      <li>1 saatte bir kullanıcı adı değiştirme hakkı</li>
+    </ul>
+    <button class="btn" onclick="closeWelcomePopup()">Tamam</button>
+  </div>
+</div>
+
+<!-- Şifre Değiştir Popup -->
+<div id="changePasswordPopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Şifre Değiştir</h2>
+    <input type="password" id="oldPassword" placeholder="Eski Şifre">
+    <input type="password" id="newPassword" placeholder="Yeni Şifre">
+    <button class="btn" onclick="changePassword()">Kaydet</button>
+    <button class="btn danger-btn" onclick="closeChangePasswordPopup()">Kapat</button>
+    <div id="changePassError" class="error"></div>
+  </div>
+</div>
+
+<!-- Kullanıcı Adı Değiştir Popup -->
+<div id="changeUsernamePopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Kullanıcı Adı Değiştir</h2>
+    <input type="text" id="newDisplayName" placeholder="Yeni Görünen Ad" maxlength="20">
+    <button class="btn" onclick="changeUsername()">Değiştir</button>
+    <button class="btn danger-btn" onclick="closeChangeUsernamePopup()">Kapat</button>
+    <div id="changeNameError" class="error"></div>
+  </div>
+</div>
+
+<!-- Mesajlarım Popup -->
+<div id="myMessagesPopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Özel Mesajlarım</h2>
+    <div id="myMessagesContent"></div>
+    <button class="btn" onclick="closeMyMessagesPopup()">Kapat</button>
+  </div>
+</div>
+
+<!-- Admin Panel Modal -->
+<div id="adminModal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Admin Paneli</h2>
+    <button class="btn" onclick="openBanList()">Ban Listesi</button>
+    <button class="btn" onclick="openMutePopup()">Sessize Al</button>
+    <button class="btn" onclick="lockChat()">Sohbet Kilitle / Kilidi Aç</button>
+    <button class="btn" onclick="announce()">Duyuru Gönder</button>
+    <button class="btn" onclick="openAnnouncementList()">Duyuruları Sil</button>
+    <button class="btn" onclick="grantRole()">Rol Ver (VIP/Moderator/Admin/BETA-TESTER/Tester)</button>
+    <button class="btn" onclick="viewChatCount()">Çevrimiçi Sayısı</button>
+    <button class="btn" onclick="openUserInfo()">Kullanıcı Bilgisi</button>
+    <button class="btn" onclick="viewDMAdmin()">Tüm DM’leri Oku</button>
+    <button class="btn" onclick="adminChangePassword()">Şifre Değiştir</button>
+    <button class="btn" onclick="impersonate()">Kullanıcı Hesabına Gir</button>
+    <button class="btn" onclick="downloadChatAsPDF()">Sohbeti İndir (TXT)</button>
+    <button class="btn" onclick="deleteAllMessages()">Tüm Global Mesajları Sil</button>
+    <button class="btn" onclick="viewAllUsers()">Tüm Kullanıcıları Görüntüle</button>
+    <button class="btn" onclick="clearUserMessages()">Bir Kullanıcının Mesajlarını Sil</button>
+    <button class="btn" onclick="kickUser()">Kullanıcıyı Sunucudan At</button>
+    <button class="btn danger-btn" onclick="closeAdminModal()">Kapat</button>
+  </div>
+</div>
+
+<!-- Ban Listesi Popup -->
+<div id="banListPopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Ban Listesi</h2>
+    <div id="bannedUsersList"></div>
+    <button class="btn" onclick="closeBanList()">Kapat</button>
+  </div>
+</div>
+
+<!-- Sessize Alma Popup -->
+<div id="mutePopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Kullanıcıyı Sessize Al</h2>
+    <input type="text" id="muteUsername" placeholder="Kullanıcı adı">
+    <input type="number" id="muteDuration" placeholder="Süre (dakika)" min="1">
+    <button class="btn" onclick="confirmMute()">Sessize Al</button>
+    <button class="btn danger-btn" onclick="closeMutePopup()">Kapat</button>
+    <div id="muteError" class="error"></div>
+  </div>
+</div>
+
+<!-- Duyuru Listesi Popup -->
+<div id="announcementListPopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Duyuruları Sil</h2>
+    <div id="announcementList"></div>
+    <button class="btn" onclick="closeAnnouncementList()">Kapat</button>
+  </div>
+</div>
+
+<!-- Kullanıcı Bilgi Popup -->
+<div id="userInfoPopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Kullanıcı Bilgileri</h2>
+    <div id="userInfoContent"></div>
+    <button class="btn" onclick="closeUserInfoPopup()">Kapat</button>
+  </div>
+</div>
+
+<!-- Tüm Kullanıcılar Popup (Admin) -->
+<div id="allUsersPopup" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Tüm Kullanıcılar</h2>
+    <div id="allUsersList" style="max-height:60vh; overflow-y:auto;"></div>
+    <button class="btn" onclick="closeAllUsersPopup()">Kapat</button>
+  </div>
+</div>
+
+<!-- Sohbet Ekranı -->
+<div id="chat">
+  <!-- Kullanıcı Kontrolleri -->
+  <div id="userControls">
+    <button class="btn" onclick="toggleTheme()">Tema Değiştir</button>
+    <button class="btn" onclick="openChangePasswordPopup()">Şifre Değiştir</button>
+    <button class="btn" onclick="openChangeUsernamePopup()">Kullanıcı Adı Değiştir</button>
+    <button class="btn" onclick="openMyMessagesPopup()">Mesajlarım</button>
+    <button class="btn" onclick="showStartChatModal()">Sohbete Başla</button>
+    <button class="btn" onclick="logout()">Oturumu Kapat</button>
+    <button id="toggleAdminBtn" class="btn danger-btn" style="display:none;" onclick="openAdminModal()">Admin Panel</button>
+    <span id="onlineCount">Çevrimiçi: 0</span>
+  </div>
+
+  <!-- Typing Indicator -->
+  <div id="typingIndicator">Karşı taraf yazıyor...</div>
+
+  <!-- Mesaj Arama -->
+  <div style="padding:12px 16px; background:#292d31; border-bottom:1px solid #3a3f45;">
+    <input type="text" id="searchInput" placeholder="Mesajlarda ara..." style="width:100%; padding:10px; border:none; border-radius:6px; background:#3b3f44; color:#e1e3e5; font-size:14px;" oninput="searchMessages()">
+  </div>
+
+  <!-- Mesajlar -->
+  <div id="messages"></div>
+
+  <!-- Mesaj Gönderme & Resim Yükleme Alanı -->
+  <div id="inputArea">
+    <input id="messageInput" placeholder="Mesajınızı yazın..." autocomplete="off" oninput="notifyTyping()" />
+    <button id="sendBtn" class="btn" onclick="send()">Gönder</button>
+    <!-- Cloudinary “Resim Yükle” butonu -->
+    <button id="upload_widget" class="btn" style="margin-left:8px;">📷 Resim Yükle</button>
+  </div>
+</div>
+
+<!-- Profil Popup -->
+<div id="profilePopup"></div>
+
+<!-- Ban Listesi Popup -->
+<div id="banListPopup"></div>
+
+<!-- Sessize Alma Popup -->
+<div id="mutePopup"></div>
+
+<!-- Duyuru Listesi Popup -->
+<div id="announcementListPopup"></div>
+
+<!-- Kullanıcı Bilgi Popup -->
+<div id="userInfoPopup"></div>
+
+<!-- Tüm Kullanıcılar Popup -->
+<div id="allUsersPopup"></div>
+
+<!-- DM Kutusu -->
+<div id="privateChat"></div>
+
+<!-- Sohbete Başla Modal -->
+<div id="startChatModal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <h2>Sohbete Başla</h2>
+    <input type="text" id="startChatUsername" placeholder="Kullanıcı adı">
+    <button class="btn" onclick="confirmStartChat()">Başlat</button>
+    <button class="btn danger-btn" onclick="closeStartChatModal()">İptal</button>
+    <div id="startChatError" class="error"></div>
+  </div>
+</div>
+
+<!-- Bildirim Sesi -->
+<audio id="mentionSound" src="https://notificationsounds.com/storage/sounds/file-sounds-1144-pristine.mp3" preload="auto"></audio>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<script>
+  // --- Firebase Konfigürasyonu ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyAWA4a9VSTPUKWe4Pqsc6U6O0hrdFGlOd0",
+    authDomain: "openchat2.firebaseapp.com",
+    databaseURL: "https://openchat2-default-rtdb.firebaseio.com",
+    projectId: "openchat2",
+    storageBucket: "openchat2.appspot.com",
+    messagingSenderId: "1046412600695",
+    appId: "1:1046412600695:web:28f6c20c997c7e6d3aed72",
+    measurementId: "G-KE583G0DX7"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const storage = firebase.storage();
+
+  let username = "";
+  let userRole = "Tester";       // Mevcut kullanıcının rolü: Admin, Moderator, VIP, BETA-TESTER, Tester, Normal
+  let displayName = "";          // Görünen adı
+  let lastDisplayChange = 0;     // Son ad değişim timestamp
+  let reloadInitialized = false;
+  let darkMode = false;
+  let autoScroll = true;
+  let typingTimeout;
+
+  // --- LocalStorage’dan “rememberUser” varsa otomatik giriş ---
+  window.onload = () => {
+    const rem = localStorage.getItem('rememberUser');
+    if (rem) {
+      db.ref("users/" + rem).once("value", snap => {
+        if (snap.exists() && !snap.val().banned && !snap.val().kicked) {
+          loginUser(rem);
+        } else {
+          localStorage.removeItem('rememberUser');
+        }
+      });
+    }
+    // Duyuruları dinle
+    db.ref("announcements").on("child_added", snapshot => {
+      const data = snapshot.val();
+      const key = snapshot.key;
+      addAnnouncementToUI(key, data);
+    });
+    db.ref("announcements").on("child_removed", snapshot => {
+      const key = snapshot.key;
+      const elem = document.getElementById("ann-" + key);
+      if (elem) elem.remove();
+    });
+    // Çevrimiçi kullanıcı sayısını dinle
+    db.ref("users").on("value", snap => {
+      const users = snap.val() || {};
+      const onlineCount = Object.values(users).filter(u => u.online).length;
+      const ocElem = document.getElementById("onlineCount");
+      if (ocElem) ocElem.innerText = "Çevrimiçi: " + onlineCount;
+    });
+  };
+
+  // --- Kullanıcı Durumunu İzleme (Çevrimiçi/Çevrimdışı) ---
+  function setOnlineStatus(isOnline) {
+    if (username) {
+      db.ref('users/' + username).update({ online: isOnline });
+    }
+  }
+  window.addEventListener('beforeunload', () => {
+    setOnlineStatus(false);
+  });
+
+  // --- Kayıt ---
+  function register() {
+    const user = document.getElementById("authUsername").value.trim();
+    const pass = document.getElementById("authPassword").value.trim();
+    if (!user || !pass) {
+      showError("Lütfen tüm alanları doldurun.");
+      return;
+    }
+    db.ref("users/" + user).once("value", snapshot => {
+      if (snapshot.exists()) {
+        showError("Bu kullanıcı adı zaten kullanılıyor.");
+      } else {
+        const defaultAvatar = ""; // Profil resimleri kaldırıldı
+        const registerDate = Date.now();
+        db.ref("users/" + user).set({
+          password: pass,
+          avatar: defaultAvatar,
+          online: false,
+          favorites: {},
+          role: "Tester",      // Her yeni kullanıcı “Tester” etiketiyle başlar
+          displayName: user,   // Görünen ad, varsayılan olarak kullanıcı adı ile aynı
+          lastDisplayChange: 0,// Görünen ad değişimi için timestamp
+          banned: false,
+          mutedUntil: 0,
+          kicked: false,
+          registerDate: registerDate,
+          totalMessages: 0
+        }, () => {
+          if (document.getElementById('rememberMeLogin').checked) {
+            localStorage.setItem('rememberUser', user);
+          }
+          loginUser(user);
+        });
+      }
+    });
+  }
+
+  // --- Giriş ---
+  function login() {
+    const user = document.getElementById("authUsername").value.trim();
+    const pass = document.getElementById("authPassword").value.trim();
+    if (!user || !pass) {
+      showError("Lütfen tüm alanları doldurun.");
+      return;
+    }
+    db.ref("users/" + user).once("value", snapshot => {
+      if (snapshot.exists() && snapshot.val().password === pass) {
+        if (snapshot.val().banned) {
+          alert("Hesabınız banlanmış.");
+          return;
+        }
+        if (snapshot.val().kicked) {
+          alert("Hesabınız sunucudan atılmış.");
+          return;
+        }
+        if (document.getElementById('rememberMeLogin').checked) {
+          localStorage.setItem('rememberUser', user);
+        }
+        loginUser(user);
+      } else {
+        showError("Geçersiz kullanıcı adı veya şifre.");
+      }
+    });
+  }
+
+  function showError(msg) {
+    const errElem = document.getElementById("authError");
+    if (errElem) errElem.innerText = msg;
+  }
+
+  // --- Giriş İşlemi ---
+  function loginUser(user) {
+    username = user;
+    // Kullanıcının Veri Tabanındaki Kaydını Oku
+    db.ref("users/" + username).once("value", s => {
+      const d = s.val() || {};
+      // Eğer DB'de role yoksa ve kullanıcı adı "Admin" ise direkt Admin ata
+      if (!d.role && username === "Admin") {
+        userRole = "Admin";
+      } else {
+        userRole = d.role || "Tester";
+      }
+      displayName = d.displayName || username;
+      lastDisplayChange = d.lastDisplayChange || 0;
+    });
+
+    document.getElementById("authModal").style.display = "none";
+    document.getElementById("chat").style.display = "flex";
+
+    // Kullanıcı Kontrollerini Göster
+    document.getElementById("userControls").style.display = "flex";
+    // Eğer Admin ise Admin Panel Butonunu Göster
+    if (userRole === "Admin") {
+      document.getElementById("toggleAdminBtn").style.display = "inline-block";
+    }
+
+    setOnlineStatus(true);
+
+    // İlk girişse Hoşgeldiniz Popup'u
+    if (!localStorage.getItem('welcomeShown')) {
+      document.getElementById("welcomePopup").style.display = "flex";
+      localStorage.setItem('welcomeShown', 'true');
+    }
+
+    loadMessages();
+    listenForDeletesAndEdits();
+    listenForReloadCommand();
+
+    // Enter tuşuyla mesaj gönderme ve typing indicator
+    const msgInput = document.getElementById("messageInput");
+    if (msgInput) {
+      msgInput.addEventListener("keypress", (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          send();
+        } else {
+          notifyTyping();
+        }
+      });
+    }
+  }
+
+  function closeWelcomePopup() {
+    document.getElementById("welcomePopup").style.display = "none";
+  }
+
+  // --- Oturumu Kapat ---
+  function logout() {
+    setOnlineStatus(false);
+    localStorage.removeItem('rememberUser');
+    localStorage.removeItem('welcomeShown');
+    username = "";
+    location.reload();
+  }
+
+  // --- Mesaj Gönderme ---
+  function send() {
+    const msgElem = document.getElementById("messageInput");
+    if (!msgElem) return;
+    const msg = msgElem.value.trim();
+    if (!msg) return;
+
+    // Chat kilitli mi?
+    db.ref("chatLock").once("value", snap => {
+      if (snap.exists() && snap.val() === true && userRole !== "Admin") {
+        alert("Sohbet kilitli; mesaj gönderemezsiniz.");
+        return;
+      }
+      // Sessize alındı mı?
+      db.ref("users/" + username + "/mutedUntil").once("value", mSnap => {
+        const mutedUntil = mSnap.val() || 0;
+        if (Date.now() < mutedUntil) {
+          alert("Sessize alındınız; mesaj gönderemezsiniz.");
+          return;
+        }
+        // Küfür filtreleme
+        const badWords = ["küfür1","küfür2"];
+        let filtered = msg;
+        badWords.forEach(w => {
+          const rx = new RegExp(w, "gi");
+          filtered = filtered.replace(rx, "***");
+        });
+        // Mesaj sayacı arttır
+        db.ref("users/" + username + "/totalMessages").transaction(n => (n || 0) + 1);
+
+        const messageData = {
+          username: username,
+          message: filtered,
+          imageURL: "",       // Boşsa normal metin
+          timestamp: Date.now()
+        };
+        db.ref("messages_global").push(messageData);
+        msgElem.value = "";
+      });
+    });
+  }
+
+  // --- Mesajları Yükleme ve Dinleme ---
+  function loadMessages() {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return;
+    messagesDiv.innerHTML = "";
+    db.ref("messages_global").on("child_added", snapshot => {
+      addOrUpdateMessage(snapshot.key, snapshot.val());
+    });
+  }
+
+  function addOrUpdateMessage(key, val) {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return;
+    let msgDiv = document.getElementById("msg-" + key);
+
+    if (!msgDiv) {
+      msgDiv = document.createElement("div");
+      msgDiv.className = "message";
+      msgDiv.id = "msg-" + key;
+      messagesDiv.appendChild(msgDiv);
+    }
+
+    // Yazarı ve rolünü dinamik olarak al
+    db.ref("users/" + val.username).once("value", snapUser => {
+      const userData = snapUser.val() || {};
+      // Kayıt tarihi 0 ise şu an olarak atama
+      const regDateRaw = userData.registerDate || Date.now();
+      const regDate = regDateRaw > 0 ? regDateRaw : Date.now();
+      const now = Date.now();
+      const daysSince = Math.floor((now - regDate) / (1000 * 60 * 60 * 24));
+
+      // Rol etiketleri: Öncelik sırası: Admin > Moderator > VIP > BETA-TESTER > Tester > Normal
+      let roleLabel = "";
+      if (userData.role === "Admin") {
+        roleLabel = `<span class="role-tag">ADMİN</span>`;
+      } else if (userData.role === "Moderator") {
+        roleLabel = `<span class="role-tag">MODERATÖR</span>`;
+      } else if (userData.role === "VIP") {
+        roleLabel = `<span class="role-tag">VIP</span>`;
+      } else if (userData.role === "BETA-TESTER") {
+        roleLabel = `<span class="role-tag">BETA-TESTER</span>`;
+      } else if (userData.role === "Tester") {
+        roleLabel = `<span class="role-tag">TESTER</span>`;
+      } else {
+        roleLabel = ""; // Normal kullanıcı
+      }
+
+      const dispName = userData.displayName || val.username;
+
+      // <header> oluştur
+      const headerDiv = document.createElement("div");
+      headerDiv.className = "header";
+
+      const userSpan = document.createElement("span");
+      userSpan.className = "author";
+      userSpan.innerHTML = `${dispName} ${roleLabel}`;
+      userSpan.onclick = (e) => showProfilePopup(val.username, e.pageX, e.pageY);
+
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "time";
+      const date = new Date(val.timestamp);
+      timeSpan.innerText = date.toLocaleString("tr-TR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+
+      headerDiv.appendChild(userSpan);
+      headerDiv.appendChild(timeSpan);
+
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "content";
+      contentDiv.innerText = val.message;
+
+      // Eğer bir resim URL’si varsa, içeriğin altına <img> ekle
+      let imageElem = null;
+      if (val.imageURL && val.imageURL !== "") {
+        imageElem = document.createElement("img");
+        imageElem.src = val.imageURL;
+      }
+
+      // Mention kontrolü
+      if (val.message.includes("@" + displayName)) {
+        msgDiv.classList.add("mention");
+        const sound = document.getElementById("mentionSound");
+        if (sound) sound.play().catch(()=>{});
+        showMentionPopup();
+      } else {
+        msgDiv.classList.remove("mention");
+      }
+
+      // Sil/Düzenle: Mesaj sahibi veya Admin ise
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "actions";
+      if (val.username === username || userRole === "Admin") {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn delete-btn small";
+        deleteBtn.innerText = "Sil";
+        deleteBtn.onclick = () => db.ref("messages_global/" + key).remove();
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "btn edit-btn small";
+        editBtn.innerText = "Düzenle";
+        editBtn.onclick = () => {
+          const newMessage = prompt("Yeni mesajı girin:", val.message);
+          if (newMessage && newMessage.trim() !== "") {
+            db.ref("messages_global/" + key).update({ message: newMessage.trim() });
+          }
+        };
+
+        actionsDiv.appendChild(deleteBtn);
+        actionsDiv.appendChild(editBtn);
+      }
+
+      msgDiv.innerHTML = "";
+      msgDiv.appendChild(headerDiv);
+      msgDiv.appendChild(contentDiv);
+      if (imageElem) msgDiv.appendChild(imageElem);
+      msgDiv.appendChild(actionsDiv);
+
+      if (autoScroll) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+  }
+
+  // --- Silme ve Düzenleme Dinleme ---
+  function listenForDeletesAndEdits() {
+    db.ref("messages_global").on("child_removed", snapshot => {
+      const msgDiv = document.getElementById("msg-" + snapshot.key);
+      if (msgDiv) msgDiv.remove();
+    });
+    db.ref("messages_global").on("child_changed", snapshot => {
+      addOrUpdateMessage(snapshot.key, snapshot.val());
+    });
+  }
+
+  // --- Admin: Tüm Mesajları Sil ---
+  function deleteAllMessages() {
+    if (confirm("Sohbetteki tüm mesajları silmek istediğinizden emin misiniz?")) {
+      db.ref("messages_global").remove();
+    }
+  }
+
+  // --- Siteyi Yenile Komutu (Admin) ---
+  function triggerReloadCommand() {
+    db.ref("reload_commands").push({ timestamp: Date.now() });
+  }
+  function listenForReloadCommand() {
+    const reloadRef = db.ref("reload_commands");
+    reloadRef.once("value", () => { reloadInitialized = true; });
+    reloadRef.on("child_added", snapshot => {
+      if (reloadInitialized) {
+        alert("Yönetici sayfayı yeniledi, sayfa yeniden yüklenecek.");
+        location.reload();
+      }
+    });
+  }
+
+  // --- Tema Değiştir ---
+  function toggleTheme() {
+    darkMode = !darkMode;
+    if (darkMode) {
+      document.body.classList.remove("light-mode");
+    } else {
+      document.body.classList.add("light-mode");
+    }
+  }
+
+  // --- Admin Modal Göster/Gizle ---
+  function openAdminModal() {
+    document.getElementById("adminModal").style.display = "flex";
+  }
+  function closeAdminModal() {
+    document.getElementById("adminModal").style.display = "none";
+  }
+
+  // --- Profil Popup ---
+  function showProfilePopup(user, x, y) {
+    db.ref("users/" + user).once("value", snapUser => {
+      const data = snapUser.val() || {};
+      const popup = document.getElementById("profilePopup");
+
+      // Geçerli kayıt tarihini belirle
+      const regDateRaw = data.registerDate || Date.now();
+      const regDate = regDateRaw > 0 ? regDateRaw : Date.now();
+      const dateStr = new Date(regDate).toLocaleDateString("tr-TR");
+      const daysSince = Math.floor((Date.now() - regDate) / (1000 * 60 * 60 * 24));
+
+      // Rol etiketleri
+      let roleLabel = "";
+      if (data.role === "Admin") {
+        roleLabel = `<span class="role-tag">ADMİN</span>`;
+      } else if (data.role === "Moderator") {
+        roleLabel = `<span class="role-tag">MODERATÖR</span>`;
+      } else if (data.role === "VIP") {
+        roleLabel = `<span class="role-tag">VIP</span>`;
+      } else if (data.role === "BETA-TESTER") {
+        roleLabel = `<span class="role-tag">BETA-TESTER</span>`;
+      } else if (data.role === "Tester") {
+        roleLabel = `<span class="role-tag">TESTER</span>`;
+      } else {
+        roleLabel = "";
+      }
+
+      const disp = data.displayName || user;
+      popup.innerHTML = `
+        <div class="username">${disp} ${roleLabel}</div>
+        <div class="register-date">Kayıt Tarihi: ${dateStr}</div>
+        <div class="days-since">Kayıtlı: ${daysSince} gün</div>
+        <div class="status">${data.online ? "🟢 Online" : "⚪ Offline"}</div>
+        <button class="btn" onclick="startPrivateChat('${user}')">Özel Mesaj Gönder</button>
+        <button class="btn danger-btn" onclick="closeProfilePopup()">Kapat</button>
+      `;
+      popup.style.left = x + "px";
+      popup.style.top = y + "px";
+      popup.style.display = "block";
+      setTimeout(() => {
+        document.addEventListener("click", hideProfilePopupOnce);
+      }, 100);
+    });
+  }
+  function hideProfilePopupOnce() {
+    document.getElementById("profilePopup").style.display = "none";
+    document.removeEventListener("click", hideProfilePopupOnce);
+  }
+  function closeProfilePopup() {
+    document.getElementById("profilePopup").style.display = "none";
+  }
+
+  function sanitizeKey(key) {
+    return key.replace(/[^a-zA-Z0-9_-]/g, '');
+  }
+
+  // --- Özel Mesajlaşma (DM) ---
+  function startPrivateChat(targetUser) {
+    const threadKey = [sanitizeKey(username), sanitizeKey(targetUser)].sort().join("_");
+    openPrivateChatWindow(targetUser, threadKey);
+  }
+
+  function openPrivateChatWindow(targetUser, threadKey) {
+    document.getElementById("chat").style.display = "none";
+    let privateDiv = document.getElementById("privateChat");
+
+    const tpl = `
+      <button class="btn startChatBtn" onclick="showStartChatModal()">Sohbete Başla</button>
+      <div class="header">
+        <span>Özel Sohbet: ${targetUser}</span>
+        <button class="btn danger-btn small" onclick="closePrivateChat()">✖ İptal</button>
+      </div>
+      <div class="messages" id="privateMessages"></div>
+      <div class="inputArea">
+        <input id="privateInput" placeholder="Mesajınızı yazın..." oninput="notifyTyping()" />
+        <button class="btn" onclick="sendPrivateMessage('${threadKey}','${targetUser}')">Gönder</button>
+      </div>
+    `;
+    if (!privateDiv) {
+      privateDiv = document.createElement("div");
+      privateDiv.id = "privateChat";
+      privateDiv.style = "display:flex; flex-direction:column; height:100vh; background:#1e2124; color:#e1e3e5;";
+      privateDiv.innerHTML = tpl;
+      document.body.appendChild(privateDiv);
+    } else {
+      privateDiv.innerHTML = tpl;
+      privateDiv.style.display = "flex";
+    }
+
+    const pmDiv = document.getElementById("privateMessages");
+    pmDiv.innerHTML = "";
+    db.ref(`private_messages/${threadKey}`).off();
+    db.ref(`private_messages/${threadKey}`).on("child_added", snap => {
+      const val = snap.val();
+      const msgEl = document.createElement("div");
+      msgEl.className = "msg";
+
+      // Özel mesaj içinde okundu durumu ve aksi işlemleri
+      let actionsHtml = "";
+      if (val.username === username || userRole === "Admin") {
+        actionsHtml = `
+          <button class="btn delete-btn small" onclick="deletePrivateMessage('${threadKey}','${snap.key}')">Sil</button>
+          <button class="btn edit-btn small" onclick="editPrivateMessage('${threadKey}','${snap.key}','${val.message}')">Düzenle</button>
+        `;
+      }
+
+      const readMark = val.read ? '✓ Okundu' : '✉ Gönderildi';
+
+      msgEl.innerHTML = `
+        <div class="header">
+          <span>${val.username}</span>
+          <span class="read-status">${readMark}</span>
+        </div>
+        <div class="content">${val.message}</div>
+        <div class="actions">${actionsHtml}</div>
+      `;
+      pmDiv.appendChild(msgEl);
+      pmDiv.scrollTop = pmDiv.scrollHeight;
+      if (!val.read) {
+        snap.ref.update({ read: true });
+      }
+    });
+  }
+
+  function deletePrivateMessage(threadKey, msgKey) {
+    if (confirm("Bu özel mesajı silmek istediğinize emin misiniz?")) {
+      db.ref(`private_messages/${threadKey}/${msgKey}`).remove();
+    }
+  }
+
+  function editPrivateMessage(threadKey, msgKey, oldMsg) {
+    const newMessage = prompt("Yeni mesajı girin:", oldMsg);
+    if (newMessage && newMessage.trim() !== "") {
+      db.ref(`private_messages/${threadKey}/${msgKey}`).update({ message: newMessage.trim() });
+    }
+  }
+
+  function confirmStartChat() {
+    const inp = document.getElementById("startChatUsername");
+    const err = document.getElementById("startChatError");
+    if (!inp || !err) return;
+    const other = inp.value.trim();
+    if (!other) {
+      err.innerText = "Kullanıcı adı girin.";
+      return;
+    }
+    if (other === username) {
+      err.innerText = "Kendinizle DM gönderemezsiniz.";
+      return;
+    }
+    db.ref("users/" + other).once("value", snap => {
+      if (snap.exists() && !snap.val().banned && !snap.val().kicked) {
+        closeStartChatModal();
+        startPrivateChat(other);
+      } else {
+        err.innerText = "Kullanıcı bulunamadı veya engellenmiş.";
+      }
+    });
+  }
+
+  function closeStartChatModal() {
+    document.getElementById("startChatModal").style.display = "none";
+    const inp = document.getElementById("startChatUsername");
+    const err = document.getElementById("startChatError");
+    if (inp) inp.value = "";
+    if (err) err.innerText = "";
+  }
+  function showStartChatModal() {
+    document.getElementById("startChatModal").style.display = "flex";
+  }
+
+  function sendPrivateMessage(threadKey, targetUser) {
+    const input = document.getElementById("privateInput");
+    if (!input) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+    db.ref("users/" + username + "/mutedUntil").once("value", mSnap => {
+      const mutedUntil = mSnap.val() || 0;
+      if (Date.now() < mutedUntil) {
+        alert("Sessize alındınız; DM gönderemezsiniz.");
+        return;
+      }
+      db.ref(`private_messages/${threadKey}`).push({
+        username: username,
+        message: msg,
+        timestamp: Date.now(),
+        read: false
+      });
+      input.value = "";
+    });
+  }
+
+  function closePrivateChat() {
+    const privateDiv = document.getElementById("privateChat");
+    if (privateDiv) privateDiv.style.display = "none";
+    document.getElementById("chat").style.display = "flex";
+  }
+
+  // --- Typing Indicator ---
+  function notifyTyping() {
+    const indicator = document.getElementById("typingIndicator");
+    if (!indicator) return;
+    indicator.style.display = "block";
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      indicator.style.display = "none";
+    }, 1500);
+  }
+
+  // --- Şifre Değiştir ---
+  function openChangePasswordPopup() {
+    document.getElementById("changePasswordPopup").style.display = "flex";
+  }
+  function closeChangePasswordPopup() {
+    document.getElementById("changePasswordPopup").style.display = "none";
+    const err = document.getElementById("changePassError");
+    if (err) err.innerText = "";
+    const oldP = document.getElementById("oldPassword");
+    const newP = document.getElementById("newPassword");
+    if (oldP) oldP.value = "";
+    if (newP) newP.value = "";
+  }
+  function changePassword() {
+    const oldPassElem = document.getElementById("oldPassword");
+    const newPassElem = document.getElementById("newPassword");
+    if (!oldPassElem || !newPassElem) return;
+    const oldPass = oldPassElem.value.trim();
+    const newPass = newPassElem.value.trim();
+    if (!oldPass || !newPass) {
+      const err = document.getElementById("changePassError");
+      if (err) err.innerText = "Lütfen tüm alanları doldurun.";
+      return;
+    }
+    db.ref("users/" + username).once("value", snapshot => {
+      if (snapshot.exists() && snapshot.val().password === oldPass) {
+        db.ref("users/" + username).update({ password: newPass }, () => {
+          alert("Şifreniz başarıyla değiştirildi.");
+          closeChangePasswordPopup();
+        });
+      } else {
+        const err = document.getElementById("changePassError");
+        if (err) err.innerText = "Eski şifre hatalı.";
+      }
+    });
+  }
+
+  // --- Kullanıcı Adı (displayName) Değiştir ---
+  function openChangeUsernamePopup() {
+    document.getElementById("changeUsernamePopup").style.display = "flex";
+    const err = document.getElementById("changeNameError");
+    if (err) err.innerText = "";
+    const inp = document.getElementById("newDisplayName");
+    if (inp) inp.value = "";
+  }
+  function closeChangeUsernamePopup() {
+    document.getElementById("changeUsernamePopup").style.display = "none";
+  }
+  function changeUsername() {
+    const inp = document.getElementById("newDisplayName");
+    const err = document.getElementById("changeNameError");
+    if (!inp || !err) return;
+    const newDisp = inp.value.trim();
+    if (!newDisp) {
+      err.innerText = "Yeni görünür ad boş olamaz.";
+      return;
+    }
+    // 1 saat kısıtlaması
+    const now = Date.now();
+    if (now - lastDisplayChange < 3600000) {
+      const waitSec = Math.ceil((3600000 - (now - lastDisplayChange)) / 60000);
+      err.innerText = `Yeni ad değişikliği için ${waitSec} dakika bekleyin.`;
+      return;
+    }
+    // Başka kullanıcıda aynı displayName var mı diye kontrol
+    db.ref("users").once("value", snap => {
+      const allUsers = snap.val() || {};
+      for (let u in allUsers) {
+        if (u !== username && allUsers[u].displayName === newDisp) {
+          err.innerText = "Bu isim zaten kullanılıyor.";
+          return;
+        }
+      }
+      // Eğer geçtiyse, güncelle
+      db.ref("users/" + username).update({
+        displayName: newDisp,
+        lastDisplayChange: now
+      }, () => {
+        displayName = newDisp;
+        lastDisplayChange = now;
+        alert("Görünür adınız başarıyla değiştirildi.");
+        closeChangeUsernamePopup();
+        // Mesajları yeniden yükleyerek yeni adları göster
+        document.getElementById("messages").innerHTML = "";
+        loadMessages();
+      });
+    });
+  }
+
+  // --- Mesajlarım Popup ---
+  function openMyMessagesPopup() {
+    document.getElementById("myMessagesPopup").style.display = "flex";
+    loadMyMessages();
+  }
+  function closeMyMessagesPopup() {
+    document.getElementById("myMessagesPopup").style.display = "none";
+  }
+  function loadMyMessages() {
+    const container = document.getElementById("myMessagesContent");
+    if (!container) return;
+    container.innerHTML = "";
+    db.ref("private_messages").once("value", snapshot => {
+      if (!snapshot.exists()) {
+        container.innerHTML = "<p>Henüz özel mesajınız yok.</p>";
+        return;
+      }
+      const threads = snapshot.val();
+      const myKey = sanitizeKey(username);
+      let foundAny = false;
+      Object.keys(threads).forEach(threadKey => {
+        if (threadKey.includes(myKey)) {
+          foundAny = true;
+          const parts = threadKey.split("_");
+          const other = parts[0] === myKey ? parts[1] : parts[0];
+          const threadDiv = document.createElement("div");
+          threadDiv.className = "thread";
+          const unreadCount = Object.values(threads[threadKey]).filter(m => !m.read && m.username !== username).length;
+          threadDiv.innerHTML = `
+            <span>${other} ile sohbet</span>
+            ${unreadCount ? `<span class="badge">${unreadCount}</span>` : ""}
+          `;
+          threadDiv.onclick = () => {
+            closeMyMessagesPopup();
+            openPrivateChatWindow(other, threadKey);
+          };
+          container.appendChild(threadDiv);
+        }
+      });
+      if (!foundAny) {
+        container.innerHTML = "<p>Henüz özel mesajınız yok.</p>";
+      }
+    });
+  }
+
+  // --- Mesaj Arama ---
+  function searchMessages() {
+    const queryElem = document.getElementById("searchInput");
+    if (!queryElem) return;
+    const query = queryElem.value.toLowerCase();
+    const msgs = document.querySelectorAll("#messages .message");
+    msgs.forEach(msg => {
+      const contentElem = msg.querySelector(".content");
+      const text = contentElem ? contentElem.innerText.toLowerCase() : "";
+      msg.style.display = text.includes(query) ? "block" : "none";
+    });
+  }
+
+  // --- Mention Popup Göster/Gizle ---
+  function showMentionPopup() {
+    const popup = document.getElementById("mentionPopup");
+    if (!popup) return;
+    popup.style.display = "block";
+    setTimeout(() => {
+      popup.style.display = "none";
+    }, 3000);
+  }
+
+  // --- Admin İşlevleri ---
+  // Ban Listesi
+  function openBanList() {
+    const popup = document.getElementById("banListPopup");
+    const listDiv = document.getElementById("bannedUsersList");
+    if (!popup || !listDiv) return;
+    listDiv.innerHTML = "";
+    db.ref("users").once("value", snap => {
+      const users = snap.val() || {};
+      Object.keys(users).forEach(u => {
+        if (users[u].banned) {
+          const item = document.createElement("div");
+          item.className = "user-item";
+          item.innerHTML = `<span>${u}</span><button class="btn small" onclick="unbanUser('${u}')">Ban Kaldır</button>`;
+          listDiv.appendChild(item);
+        }
+      });
+      if (listDiv.innerHTML === "") {
+        listDiv.innerHTML = "<p>Banlı kullanıcı yok.</p>";
+      }
+      popup.style.display = "flex";
+    });
+  }
+  function closeBanList() {
+    const popup = document.getElementById("banListPopup");
+    if (popup) popup.style.display = "none";
+  }
+  function unbanUser(u) {
+    db.ref("users/" + u).update({ banned: false });
+    openBanList();
+  }
+
+  // Sessize Alma
+  function openMutePopup() {
+    const errElem = document.getElementById("muteError");
+    if (errElem) errElem.innerText = "";
+    const uElem = document.getElementById("muteUsername");
+    const dElem = document.getElementById("muteDuration");
+    if (uElem) uElem.value = "";
+    if (dElem) dElem.value = "";
+    const popup = document.getElementById("mutePopup");
+    if (popup) popup.style.display = "flex";
+  }
+  function closeMutePopup() {
+    const popup = document.getElementById("mutePopup");
+    if (popup) popup.style.display = "none";
+  }
+  function confirmMute() {
+    const uElem = document.getElementById("muteUsername");
+    const dElem = document.getElementById("muteDuration");
+    const errElem = document.getElementById("muteError");
+    if (!uElem || !dElem || !errElem) return;
+    const u = uElem.value.trim();
+    const dur = parseInt(dElem.value);
+    if (!u || !dur || dur <= 0) {
+      errElem.innerText = "Geçerli değer girin.";
+      return;
+    }
+    db.ref("users/" + u).once("value", snap => {
+      if (snap.exists()) {
+        const until = Date.now() + dur * 60000;
+        db.ref("users/" + u).update({ mutedUntil: until });
+        alert(`${u} ${dur} dakika boyunca sessize alındı.`);
+        closeMutePopup();
+      } else {
+        errElem.innerText = "Kullanıcı bulunamadı.";
+      }
+    });
+  }
+
+  // Kullanıcı Bilgisi Görüntüle
+  function openUserInfo() {
+    const target = prompt("Bilgilerini görüntülemek istediğiniz kullanıcı adı:");
+    if (!target) return;
+    db.ref("users/" + target).once("value", snap => {
+      if (snap.exists()) {
+        const data = snap.val();
+        const content = document.getElementById("userInfoContent");
+        if (!content) return;
+        // Geçerli kayıt tarihi
+        const regDateRaw = data.registerDate || Date.now();
+        const regDate = regDateRaw > 0 ? regDateRaw : Date.now();
+        const dateStr = new Date(regDate).toLocaleString("tr-TR", {
+          day: "2-digit", month: "2-digit", year: "numeric",
+          hour: "2-digit", minute: "2-digit"
+        });
+        const daysSince = Math.floor((Date.now() - regDate) / (1000 * 60 * 60 * 24));
+        let roleLabel = "";
+        if (data.role === "Admin") {
+          roleLabel = `<p><strong>Rol:</strong> ADMİN</p>`;
+        } else if (data.role === "Moderator") {
+          roleLabel = `<p><strong>Rol:</strong> MODERATÖR</p>`;
+        } else if (data.role === "VIP") {
+          roleLabel = `<p><strong>Rol:</strong> VIP</p>`;
+        } else if (data.role === "BETA-TESTER") {
+          roleLabel = `<p><strong>Rol:</strong> BETA-TESTER</p>`;
+        } else if (data.role === "Tester") {
+          roleLabel = `<p><strong>Rol:</strong> TESTER</p>`;
+        } else {
+          roleLabel = `<p><strong>Rol:</strong> Normal</p>`;
+        }
+        const disp = data.displayName || target;
+        content.innerHTML = `
+          <p><strong>Kullanıcı:</strong> ${disp}</p>
+          <p><strong>Kayıt Tarihi:</strong> ${dateStr}</p>
+          <p><strong>Kayıtlı:</strong> ${daysSince} gün önce</p>
+          <p><strong>Çevrimiçi:</strong> ${data.online ? 'Evet' : 'Hayır'}</p>
+          <p><strong>Toplam Mesaj:</strong> ${data.totalMessages || 0}</p>
+          <p><strong>Banlı:</strong> ${data.banned ? 'Evet' : 'Hayır'}</p>
+          <p><strong>Sessize Alındı mı:</strong> ${Date.now() < (data.mutedUntil || 0) ? 'Evet' : 'Hayır'}</p>
+          ${roleLabel}
+        `;
+        document.getElementById("userInfoPopup").style.display = "flex";
+      } else {
+        alert("Kullanıcı bulunamadı.");
+      }
+    });
+  }
+  function closeUserInfoPopup() {
+    const popup = document.getElementById("userInfoPopup");
+    if (popup) popup.style.display = "none";
+  }
+
+  // Banla (tek kullanıcı)
+  function banUser() {
+    const target = prompt("Banlanacak kullanıcı adı:");
+    if (!target) return;
+    db.ref("users/" + target).once("value", snap => {
+      if (snap.exists()) {
+        db.ref("users/" + target).update({ banned: true });
+        alert("Kullanıcı banlandı.");
+      } else {
+        alert("Kullanıcı bulunamadı.");
+      }
+    });
+  }
+
+  // Sohbet Kilitle
+  function lockChat() {
+    db.ref("chatLock").once("value", snap => {
+      if (snap.exists() && snap.val() === true) {
+        db.ref("chatLock").set(false);
+        alert("Sohbet kilidi kaldırıldı.");
+      } else {
+        db.ref("chatLock").set(true);
+        alert("Sohbet kilitlendi.");
+      }
+    });
+  }
+
+  // Duyuru Gönder
+  function announce() {
+    const ann = prompt("Duyuru mesajı:");
+    if (!ann) return;
+    db.ref("announcements").push({ message: ann, timestamp: Date.now() });
+    alert("Duyuru gönderildi.");
+  }
+
+  // Admin duyuruları silmek için listeyi getir
+  function openAnnouncementList() {
+    const popup = document.getElementById("announcementListPopup");
+    const listDiv = document.getElementById("announcementList");
+    if (!popup || !listDiv) return;
+    listDiv.innerHTML = "";
+    db.ref("announcements").once("value", snap => {
+      const anns = snap.val() || {};
+      Object.keys(anns).forEach(key => {
+        const ann = anns[key];
+        const item = document.createElement("div");
+        item.className = "announcement-item";
+        item.innerHTML = `
+          <p>${new Date(ann.timestamp).toLocaleDateString("tr-TR", {
+            hour: "2-digit", minute: "2-digit",
+            day: "2-digit", month: "2-digit", year: "numeric"
+          })} - ${ann.message}</p>
+          <button class="btn small" onclick="deleteAnnouncement('${key}')">Sil</button>
+        `;
+        listDiv.appendChild(item);
+      });
+      if (listDiv.innerHTML === "") {
+        listDiv.innerHTML = "<p>Hiç duyuru yok.</p>";
+      }
+      popup.style.display = "flex";
+    });
+  }
+  function closeAnnouncementList() {
+    const popup = document.getElementById("announcementListPopup");
+    if (popup) popup.style.display = "none";
+  }
+  function deleteAnnouncement(key) {
+    db.ref("announcements/" + key).remove();
+  }
+
+  // Admin Rolleri Ver
+  function grantRole() {
+    const target = prompt("Rol verilecek kullanıcı adı:");
+    if (!target) return;
+    db.ref("users/" + target).once("value", snap => {
+      if (!snap.exists()) {
+        alert("Kullanıcı bulunamadı.");
+        return;
+      }
+      const rol = prompt("Yeni rol (Normal, Tester, VIP, Moderator, Admin, BETA-TESTER) olarak girin:").trim();
+      if (!rol || !["Normal","Tester","VIP","Moderator","Admin","BETA-TESTER"].includes(rol)) {
+        alert("Geçerli bir rol girin.");
+        return;
+      }
+      db.ref("users/" + target).update({ role: rol }, () => {
+        alert(`${target} kullanıcısına ${rol} rolü verildi.`);
+      });
+    });
+  }
+
+  // Aktif Kullanıcı Sayısı
+  function viewChatCount() {
+    db.ref("users").once("value", snap => {
+      const users = snap.val() || {};
+      const onlineCount = Object.values(users).filter(u => u.online).length;
+      alert("Çevrimiçi kullanıcı sayısı: " + onlineCount);
+    });
+  }
+
+  // DM Oku/Düzenle/Sil (basit listeleme)
+  function viewDMAdmin() {
+    db.ref("private_messages").once("value", snap => {
+      if (!snap.exists()) {
+        alert("Hiç DM yok.");
+        return;
+      }
+      let list = "";
+      snap.forEach(threadSnap => {
+        const threadKey = threadSnap.key;
+        threadSnap.forEach(msgSnap => {
+          const d = msgSnap.val();
+          list += `${threadKey} → ${d.username}: ${d.message}\n`;
+        });
+      });
+      alert("Tüm DM’ler:\n\n" + list);
+    });
+  }
+
+  // Admin Şifre Değiştir (DB üzerinden)
+  function adminChangePassword() {
+    const target = prompt("Şifresi değiştirilecek kullanıcı adı:");
+    const newPass = prompt("Yeni şifre:");
+    if (!target || !newPass) return;
+    db.ref("users/" + target).once("value", snap => {
+      if (snap.exists()) {
+        db.ref("users/" + target).update({ password: newPass });
+        alert("Kullanıcının şifresi güncellendi.");
+      } else {
+        alert("Kullanıcı bulunamadı.");
+      }
+    });
+  }
+
+  // Hesabına Gir (impersonate)
+  function impersonate() {
+    const target = prompt("Hesabına girilecek kullanıcı adı:");
+    if (!target) return;
+    db.ref("users/" + target).once("value", snap => {
+      if (snap.exists() && !snap.val().banned && !snap.val().kicked) {
+        localStorage.setItem('rememberUser', target);
+        loginUser(target);
+      } else {
+        alert("Kullanıcı bulunamadı veya engellenmiş.");
+      }
+    });
+  }
+
+  // Sohbeti İndir (PDF): basit metin formatında indirme. PDF kitaplığı olmadan .txt olarak indiriyoruz.
+  function downloadChatAsPDF() {
+    db.ref("messages_global").once("value", snap => {
+      const msgs = snap.val() || {};
+      let content = "OpenChat Sohbet İndirimi\n\n";
+      const entries = Object.entries(msgs);
+      entries.sort((a,b) => a[1].timestamp - b[1].timestamp);
+      entries.forEach(([key, m]) => {
+        const dateStr = new Date(m.timestamp).toLocaleString("tr-TR");
+        content += `${dateStr} | ${m.username}: ${m.message}\n`;
+      });
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "OpenChat_Sohbet.txt"; // .txt olarak kaydediyoruz
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // Tüm Kullanıcı Listesi Görüntüleme (Admin)
+  function viewAllUsers() {
+    const popup = document.getElementById("allUsersPopup");
+    const listDiv = document.getElementById("allUsersList");
+    if (!popup || !listDiv) return;
+    listDiv.innerHTML = "";
+    db.ref("users").once("value", snap => {
+      const users = snap.val() || {};
+      Object.keys(users).forEach(u => {
+        const d = users[u];
+        // Kayıt tarihi
+        const regDateRaw = d.registerDate || Date.now();
+        const regDate = regDateRaw > 0 ? regDateRaw : Date.now();
+        const dateStr = new Date(regDate).toLocaleDateString("tr-TR");
+        // Rol
+        let roleLabel = "Normal";
+        if (d.role === "Admin") {
+          roleLabel = "ADMİN";
+        } else if (d.role === "Moderator") {
+          roleLabel = "MODERATÖR";
+        } else if (d.role === "VIP") {
+          roleLabel = "VIP";
+        } else if (d.role === "BETA-TESTER") {
+          roleLabel = "BETA-TESTER";
+        } else if (d.role === "Tester") {
+          roleLabel = "TESTER";
+        }
+        const item = document.createElement("div");
+        item.style = "padding:8px; background:#2f3438; margin-bottom:4px; border-radius:4px; font-size:13px; color:#e1e3e5;";
+        item.innerHTML = `
+          <p><strong>${u}</strong> (${roleLabel})</p>
+          <p style="font-size:12px; color:#9aa0a6;">Kayıt: ${dateStr} | Toplam Mesaj: ${d.totalMessages || 0}</p>
+        `;
+        listDiv.appendChild(item);
+      });
+      if (listDiv.innerHTML === "") {
+        listDiv.innerHTML = "<p>Hiç kullanıcı yok.</p>";
+      }
+      popup.style.display = "flex";
+    });
+  }
+  function closeAllUsersPopup() {
+    const popup = document.getElementById("allUsersPopup");
+    if (popup) popup.style.display = "none";
+  }
+
+  // Bir Kullanıcının Global Mesajlarını Sil (Admin)
+  function clearUserMessages() {
+    const target = prompt("Mesajları silinecek kullanıcı adı:");
+    if (!target) return;
+    if (!confirm(`${target} kullanıcısının tüm global mesajları silinsin mi?`)) return;
+    db.ref("messages_global").once("value", snap => {
+      snap.forEach(child => {
+        const m = child.val();
+        if (m.username === target) {
+          db.ref("messages_global/" + child.key).remove();
+        }
+      });
+      alert(`${target} kullanıcısının tüm mesajları silindi.`);
+    });
+  }
+
+  // Admin Kullanıcıyı Sunucudan At (Kick)
+  function kickUser() {
+    const target = prompt("Sunucudan atılacak kullanıcı adı:");
+    if (!target) return;
+    db.ref("users/" + target).once("value", snap => {
+      if (!snap.exists()) {
+        alert("Kullanıcı bulunamadı.");
+        return;
+      }
+      db.ref("users/" + target).update({ kicked: true }, () => {
+        alert(`${target} sunucudan atıldı.`);
+      });
+    });
+  }
+
+  // Kullanıcı açılışta “kicked” ise oturumu kapat
+  function checkIfKicked() {
+    if (!username) return;
+    db.ref("users/" + username + "/kicked").once("value", snap => {
+      if (snap.exists() && snap.val() === true) {
+        alert("Sunucudan atıldınız.");
+        logout();
+      }
+    });
+  }
+
+  // Yardımcı: Ekrana duyuru ekleme (UI)
+  function addAnnouncementToUI(key, data) {
+    const messagesDiv = document.getElementById("messages");
+    if (!messagesDiv) return;
+    const annDiv = document.createElement("div");
+    annDiv.className = "message";
+    annDiv.id = "ann-" + key;
+    annDiv.innerHTML = `
+      <div class="header">
+        <span style="color:#faa61a">[DUYURU]</span>
+        <span class="time">${new Date(data.timestamp).toLocaleDateString("tr-TR", {
+          hour: "2-digit", minute: "2-digit",
+          day: "2-digit", month: "2-digit", year: "numeric"
+        })}</span>
+        ${ userRole === "Admin" 
+            ? `<button class="btn small danger-btn" onclick="deleteAnnouncement('${key}')">Sil</button>` 
+            : "" }
+      </div>
+      <div class="content">${data.message}</div>
+    `;
+    messagesDiv.prepend(annDiv);
+  }
+
+  // --- Cloudinary ile Dosya Yükleme --- 
+  // 1) Cloud name ve upload preset’inizi aşağıya yazın:
+  const CLOUDINARY_CLOUD_NAME = "dane3zz3e";
+  const CLOUDINARY_UPLOAD_PRESET = "OpenChat";
+
+  // Cloudinary Widget Oluşturma (sayfanın yüklenmesiyle birlikte)
+  var myWidget = cloudinary.createUploadWidget({
+    cloudName: CLOUDINARY_CLOUD_NAME,
+    uploadPreset: CLOUDINARY_UPLOAD_PRESET
+  }, (error, result) => {
+    if (!error && result && result.event === "success") {
+      // Resim yüklendi: Firebase’e push et
+      const imageURL = result.info.secure_url;
+      const messageData = {
+        username: username,
+        message: "[RESİM]",
+        imageURL: imageURL,
+        timestamp: Date.now()
+      };
+      db.ref("messages_global").push(messageData);
+    }
+  });
+
+  // “Resim Yükle” butonuna tıklanınca widget’ı aç
+  document.addEventListener('DOMContentLoaded', () => {
+    const uploadBtn = document.getElementById("upload_widget");
+    if (uploadBtn) {
+      uploadBtn.addEventListener("click", function(){
+        myWidget.open();
+      }, false);
+    }
+  });
+
+</script>
+
+</body>
+</html>
